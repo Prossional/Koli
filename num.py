@@ -4,8 +4,7 @@ import os
 import sys
 import time
 import logging
-from socket import socket
-from urllib.request import Request, urlopen
+import socket  # Import the entire socket module
 from json import loads
 from rich.console import Console
 from rich.logging import RichHandler
@@ -19,11 +18,9 @@ logging.basicConfig(
 )
 
 # Constants
-DEFAULT_NODE_ADDRESS = "server.duinocoin.com"
-DEFAULT_NODE_PORT = 2813
+DEFAULT_NODE_ADDRESS = "203.86.195.49"
+DEFAULT_NODE_PORT = 2850
 MAX_RETRIES = 5  # Maximum retries before giving up
-
-soc = socket()
 
 # Variables to track accepted and rejected shares
 accepted_shares = 0
@@ -47,28 +44,9 @@ def get_user_input():
     return username, mining_key, use_lower_diff
 
 
-def fetch_pool():
-    """Fetch mining pool address and port."""
-    for _ in range(MAX_RETRIES):
-        try:
-            # Create a request to the pool API with a proper User-Agent header
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-            req = Request("https://server.duinocoin.com/getPool", headers=headers)
-            response = loads(urlopen(req).read())  # Fetch the pool data
-            if response.get("success"):
-                return response["ip"], response["port"]  # Return IP and Port from the response
-            else:
-                logging.error("Failed to fetch valid pool data, retrying...")
-                time.sleep(15)
-        except Exception as e:
-            logging.error(f"Error retrieving mining node, retrying in 15s. Error: {e}")
-            time.sleep(15)
-    logging.error(f"Failed to fetch pool after {MAX_RETRIES} retries, using default.")
-    return DEFAULT_NODE_ADDRESS, DEFAULT_NODE_PORT  # Fallback to default if fetch fails
-
-
 def connect_to_server(address, port):
     """Connect to the server and return the socket."""
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Initialize the socket object
     try:
         soc.connect((address, port))
         logging.info(f"Successfully connected to {address}:{port}")
@@ -96,10 +74,13 @@ def main():
 
     username, mining_key, use_lower_diff = get_user_input()
 
+    # Use default address and port directly
+    node_address = DEFAULT_NODE_ADDRESS
+    node_port = DEFAULT_NODE_PORT
+
     while True:
         try:
             logging.info("Searching for fastest connection to the server...")
-            node_address, node_port = fetch_pool()
 
             # Attempt to connect to the server
             soc = connect_to_server(node_address, node_port)
@@ -143,8 +124,9 @@ def main():
         except Exception as e:
             logging.error(f"Error occurred: {e}, restarting in 5 seconds.")
             time.sleep(5)  # Ensure correct indentation for sleep
-            os.execl(sys.executable, sys.executable, *sys.argv)  # Restart the script
 
+            os.execl(sys.executable, sys.executable, *sys.argv)  # Restart the script
 
 if __name__ == "__main__":
     main()
+                        
